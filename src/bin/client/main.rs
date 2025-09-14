@@ -14,28 +14,38 @@ fn main() {
         address, operation
     );
 
-    let request = "INSERT 42\n";
+    let op_1 = "OP + 42\n";
+    let op_2 = "OP - 10\n";
+    let op_3 = "OP + 1\n";
+    let get = "GET\n";
+    let op_4 = "OP / 11\n";
+    let op_5 = "OP * 2\n";
+
+    let list = [op_1, op_2, op_3, get, op_4, op_5];
 
     if let Ok(mut stream) = TcpStream::connect(address) {
 
         println!("Connectado al servidor!");
         
-        let write = match stream.write(request.as_bytes()){
-            Ok(value) => value,
-            Err(_) => {
-                eprintln!("");
-                return
-            }
-        };
-        println!("{:?}", write);
-
-        let _ = match stream.flush() {
-            Ok(value) => value,
-            Err(_) => {
-                eprintln!("");
-                return
-            }
-        };
+        for request in list {
+            let write = match stream.write(request.as_bytes()){
+                Ok(value) => value,
+                Err(_) => {
+                    eprintln!("Error wirte.");
+                    return
+                }
+            };
+            println!("write resp: {:?}", write);
+    
+            let _ = match stream.flush() {
+                Ok(value) => value,
+                Err(_) => {
+                    eprintln!("Error in flush");
+                    return
+                }
+            };
+            
+        }
     
     } else {
         println!("No se pudo conectar...");
