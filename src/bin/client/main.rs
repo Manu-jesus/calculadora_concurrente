@@ -1,7 +1,7 @@
 use std::{
     env::Args,
     fs::File,
-    io::{BufRead, BufReader, Write},
+    io::{BufRead, BufReader, BufWriter, Write},
     net::TcpStream,
 };
 
@@ -34,7 +34,7 @@ fn process_information(inputs: std::env::Args, address: &String) -> Result<(), (
 
         let file_reader = BufReader::new(file);
 
-        if let Ok(stream) = TcpStream::connect(address) {
+        if let Ok(mut stream) = TcpStream::connect(address) {
             if let Some(value) = proccess_lines(file_reader, stream, address) {
                 return value;
             }
@@ -78,6 +78,37 @@ fn proccess_lines(
                 return Some(Err(()));
             }
         };
+
+        let copy = match stream.try_clone() {
+            Ok(wrt) => wrt,
+            Err(_) => return Some(Err(())),
+        };
+
+
+        let mut reader = BufReader::new(copy);
+        let mut response = String::new();
+
+        let _ = match reader.read_line(&mut response) {
+            Ok(_) => Ok(response.trim().to_string()),
+            Err(err) => Err(format!("Failed to read from stream: {}", err)),
+        };
+        
+        println!("{}", response);
+
+        let tokens: Vec<&str> = response.split_whitespace().collect();
+        let operation = *tokens
+            .first()
+            .ok_or("expected operation as first argument")
+            .ok()?;
+        match operation {
+            "ERROR" => {
+                eprintln!("{}", response);
+            }
+            "VALUE" => {
+                eprintln!("{:?}", tokens.get(1));
+            }
+            _ => {}
+        }
     }
 
     let end_value = String::from("GET\n");
@@ -100,15 +131,26 @@ fn proccess_lines(
 
     let mut reader = BufReader::new(stream);
     let mut response = String::new();
-    match reader.read_line(&mut response) {
-        Ok(value) => value,
-        Err(_) => {
-            eprintln!("Error wirte.");
-            return Some(Err(()));
-        }
+
+    let _ = match reader.read_line(&mut response) {
+        Ok(_) => Ok(response.trim().to_string()),
+        Err(err) => Err(format!("Failed to read from stream: {}", err)),
     };
 
-    println!("{}", response.trim());
+    let tokens: Vec<&str> = response.split_whitespace().collect();
+    let operation = *tokens
+        .first()
+        .ok_or("expected operation as first argument")
+        .ok()?;
+    match operation {
+        "ERROR" => {
+            eprintln!("{}", response);
+        }
+        "VALUE" => {
+            eprintln!("{:?}", tokens.get(1));
+        }
+        _ => {}
+    }
 
     None
 }

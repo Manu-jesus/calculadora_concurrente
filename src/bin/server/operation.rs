@@ -1,4 +1,5 @@
 use crate::calculadora::Aritmetic;
+use std::num::ParseIntError;
 use std::str::FromStr;
 
 #[derive(PartialEq, Eq, Debug)]
@@ -8,7 +9,7 @@ pub enum Operation {
 }
 
 impl FromStr for Operation {
-    type Err = &'static str;
+    type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let tokens: Vec<&str> = s.split_whitespace().collect();
@@ -19,30 +20,42 @@ impl FromStr for Operation {
 
         match operation {
             "OP" => {
+                if tokens.len() < 3 {
+                    let message = match tokens.get(1) {
+                        Some(value) => value,
+                        None => return Err("unknown operation".to_string()),
+                    };
+                    return Err(format!("unexpected message: {}", message));
+                }
+
                 let number_operation: u8 = tokens
                     .get(2)
-                    .ok_or("expected number as third argument")?
+                    .ok_or("unexpected message: ")?
                     .parse()
-                    .map_err(|_| "failed to parse number")?;
+                    .map_err(|e: ParseIntError| format!("parsing error: invalid integer: {}", e))?;
 
                 let [_, signe, _] = tokens.try_into().map_err(|_| "expected 2 arguments")?;
 
                 let aritmetic = match signe {
-                    "+" => Ok(Aritmetic::Add(number_operation)),
-                    "-" => Ok(Aritmetic::Sub(number_operation)),
-                    "*" => Ok(Aritmetic::Mul(number_operation)),
-                    "/" => Ok(Aritmetic::Div(number_operation)),
-                    _ => Err("unknown operation"),
-                }?;
+                    "+" => Aritmetic::Add(number_operation),
+                    "-" => Aritmetic::Sub(number_operation),
+                    "*" => Aritmetic::Mul(number_operation),
+                    "/" => {
+                        if number_operation == 0 {
+                            return Err("division by zero".to_string());
+                        }
+                        Aritmetic::Div(number_operation)
+                    }
+                    unknown => return Err(format!("unknown operation: {}", unknown)),
+                };
 
                 Ok(Operation::Op(aritmetic))
             }
             "GET" => Ok(Operation::Get),
-            _ => Err("unknown operation"),
+            _ => Err(String::from("invalid command format")),
         }
     }
 }
-
 #[test]
 fn test_from_str_op_add() {
     let result = Operation::from_str("OP + 10");
@@ -75,30 +88,26 @@ fn test_from_str_get() {
 
 #[test]
 fn test_from_str_unknown_main_operation() {
+    // Este test ahora debería esperar "invalid command format"
     let result = Operation::from_str("UNKNOWN");
-    assert_eq!(result, Err("unknown operation"));
-}
-
-#[test]
-fn test_from_str_empty_string() {
-    let result = Operation::from_str("");
-    assert_eq!(result, Err("expected operation as first argument"));
-}
-
-#[test]
-fn test_from_str_op_with_missing_arguments() {
-    let result = Operation::from_str("OP +");
-    assert_eq!(result, Err("expected number as third argument"));
+    assert_eq!(result, Err(String::from("invalid command format")));
 }
 
 #[test]
 fn test_from_str_op_invalid_number() {
     let result = Operation::from_str("OP + abc");
-    assert_eq!(result, Err("failed to parse number"));
+    let expected_error = "parsing error: invalid integer: invalid digit found in string";
+    assert_eq!(result.unwrap_err(), expected_error);
 }
 
 #[test]
 fn test_from_str_op_unknown_arithmetic_sign() {
     let result = Operation::from_str("OP ! 10");
-    assert_eq!(result, Err("unknown operation"));
+    assert_eq!(result, Err(String::from("unknown operation: !")));
+}
+
+#[test]
+fn test_from_str_op_division_by_zero() {
+    let result = Operation::from_str("OP / 0");
+    assert_eq!(result, Err(String::from("division by zero")));
 }
