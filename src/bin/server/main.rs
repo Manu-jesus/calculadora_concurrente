@@ -93,7 +93,7 @@ fn procesar_conexion_por_lineas(
                         write_stream.write_all("OK\n".as_bytes())?;
                     }
                     Operation::Get => {
-                        let response = format!("{}\n", calculator_locket.value());
+                        let response = format!("VALUE {}\n", calculator_locket.value());
 
                         write_stream.write_all(response.as_bytes())?;
                     }

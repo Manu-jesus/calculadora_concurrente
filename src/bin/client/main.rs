@@ -1,7 +1,7 @@
 use std::{
     env::Args,
     fs::File,
-    io::{BufRead, BufReader, BufWriter, Write},
+    io::{BufRead, BufReader, Write},
     net::TcpStream,
 };
 
@@ -34,7 +34,7 @@ fn process_information(inputs: std::env::Args, address: &String) -> Result<(), (
 
         let file_reader = BufReader::new(file);
 
-        if let Ok(mut stream) = TcpStream::connect(address) {
+        if let Ok(stream) = TcpStream::connect(address) {
             if let Some(value) = proccess_lines(file_reader, stream, address) {
                 return value;
             }
@@ -84,7 +84,6 @@ fn proccess_lines(
             Err(_) => return Some(Err(())),
         };
 
-
         let mut reader = BufReader::new(copy);
         let mut response = String::new();
 
@@ -92,8 +91,6 @@ fn proccess_lines(
             Ok(_) => Ok(response.trim().to_string()),
             Err(err) => Err(format!("Failed to read from stream: {}", err)),
         };
-        
-        println!("{}", response);
 
         let tokens: Vec<&str> = response.split_whitespace().collect();
         let operation = *tokens
@@ -102,7 +99,7 @@ fn proccess_lines(
             .ok()?;
         match operation {
             "ERROR" => {
-                eprintln!("{}", response);
+                eprintln!("{}", response.trim());
             }
             "VALUE" => {
                 eprintln!("{:?}", tokens.get(1));
@@ -129,7 +126,12 @@ fn proccess_lines(
         }
     };
 
-    let mut reader = BufReader::new(stream);
+    let copy_dos = match stream.try_clone() {
+        Ok(wrt) => wrt,
+        Err(_) => return Some(Err(())),
+    };
+
+    let mut reader = BufReader::new(copy_dos);
     let mut response = String::new();
 
     let _ = match reader.read_line(&mut response) {
@@ -144,10 +146,11 @@ fn proccess_lines(
         .ok()?;
     match operation {
         "ERROR" => {
-            eprintln!("{}", response);
+            eprintln!("{}", response.trim());
         }
         "VALUE" => {
-            eprintln!("{:?}", tokens.get(1));
+            let message = tokens.get(1)?;
+            println!("{}", message);
         }
         _ => {}
     }

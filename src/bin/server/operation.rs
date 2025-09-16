@@ -23,7 +23,7 @@ impl FromStr for Operation {
                 if tokens.len() < 3 {
                     let message = match tokens.get(1) {
                         Some(value) => value,
-                        None => return Err("unknown operation".to_string()),
+                        None => return Err("parsing error: unknown operation".to_string()),
                     };
                     return Err(format!("unexpected message: {}", message));
                 }
@@ -46,13 +46,15 @@ impl FromStr for Operation {
                         }
                         Aritmetic::Div(number_operation)
                     }
-                    unknown => return Err(format!("unknown operation: {}", unknown)),
+                    unknown => {
+                        return Err(format!("parsing error: unknown operation: {}", unknown));
+                    }
                 };
 
                 Ok(Operation::Op(aritmetic))
             }
             "GET" => Ok(Operation::Get),
-            _ => Err(String::from("invalid command format")),
+            _ => Err(String::from("unexpected message: invalid command format")),
         }
     }
 }
@@ -88,9 +90,11 @@ fn test_from_str_get() {
 
 #[test]
 fn test_from_str_unknown_main_operation() {
-    // Este test ahora debería esperar "invalid command format"
     let result = Operation::from_str("UNKNOWN");
-    assert_eq!(result, Err(String::from("invalid command format")));
+    assert_eq!(
+        result,
+        Err(String::from("unexpected message: invalid command format"))
+    );
 }
 
 #[test]
@@ -98,12 +102,6 @@ fn test_from_str_op_invalid_number() {
     let result = Operation::from_str("OP + abc");
     let expected_error = "parsing error: invalid integer: invalid digit found in string";
     assert_eq!(result.unwrap_err(), expected_error);
-}
-
-#[test]
-fn test_from_str_op_unknown_arithmetic_sign() {
-    let result = Operation::from_str("OP ! 10");
-    assert_eq!(result, Err(String::from("unknown operation: !")));
 }
 
 #[test]

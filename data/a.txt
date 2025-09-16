@@ -4,6 +4,7 @@
 / 6
 * 4
 - 300
+multiplicar 5
 / cinco
 OK
 / 0
